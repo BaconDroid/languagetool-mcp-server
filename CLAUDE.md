@@ -99,7 +99,7 @@ Das Projekt soll als Open-Source-Projekt veröffentlicht werden. Folgende Aufgab
 
 ### Repository-Setup
 - [ ] GitHub-Repository anlegen (Name: `languagetool-mcp-server`)
-- [ ] Passende Lizenz wählen – Vorschlag: **MIT** (einfach, weit verbreitet, kompatibel mit dem MCP-SDK)
+- [x] Passende Lizenz wählen – **MIT** (LICENSE-Datei vorhanden, package.json aktualisiert)
 - [ ] `.gitignore` für Node.js anlegen (`node_modules/`, `dist/`)
 - [ ] `CHANGELOG.md` anlegen
 - [ ] `CONTRIBUTING.md` anlegen (Hinweise für Beitragende)

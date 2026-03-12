@@ -138,3 +138,9 @@ npm run dev
 # Einmalig bauen
 npm run build
 ```
+
+---
+
+## Lizenz
+
+[MIT](LICENSE) © 2026 Dominik Pesch
