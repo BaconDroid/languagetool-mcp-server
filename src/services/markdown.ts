@@ -9,6 +9,7 @@
 
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
+import remarkGfm from 'remark-gfm';
 import type { Root, Node, Parent } from 'mdast';
 
 // ---------------------------------------------------------------------------
@@ -52,7 +53,7 @@ interface MarkdownParser {
 // ---------------------------------------------------------------------------
 
 class RemarkMarkdownParser implements MarkdownParser {
-  private readonly processor = unified().use(remarkParse);
+  private readonly processor = unified().use(remarkParse).use(remarkGfm);
 
   extractMarkupRegions(markdown: string): MarkupRegion[] {
     const tree = this.processor.parse(markdown) as Root;
@@ -77,6 +78,9 @@ class RemarkMarkdownParser implements MarkdownParser {
       case 'imageReference':
       case 'html':
       case 'definition':
+      // GFM tables: pipe chars, alignment and separator rows create too much
+      // noise for LanguageTool. Mark the entire table as markup.
+      case 'table':
         this.addWholeNode(node, regions, '');
         break;
 

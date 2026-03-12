@@ -138,7 +138,10 @@ Beispiele:
         const annotatedText = format === 'markdown'
           ? markdownToAnnotatedText(text)
           : undefined;
-        const result = await checkText(text, language, false, picky, disabled_rules, enabled_rules, annotatedText);
+        const effectiveDisabledRules = format === 'markdown'
+          ? [...new Set(['WHITESPACE_RULE', ...disabled_rules])]
+          : disabled_rules;
+        const result = await checkText(text, language, false, picky, effectiveDisabledRules, enabled_rules, annotatedText);
         const markdown = formatResultMarkdown(result, text);
         return {
           content: [{ type: 'text', text: markdown }],
@@ -198,7 +201,8 @@ Returns:
         const annotatedText = format === 'markdown'
           ? markdownToAnnotatedText(text)
           : undefined;
-        const result = await checkText(text, language, false, picky, [], [], annotatedText);
+        const effectiveDisabledRules = format === 'markdown' ? ['WHITESPACE_RULE'] : [];
+        const result = await checkText(text, language, false, picky, effectiveDisabledRules, [], annotatedText);
 
         if (result.totalMatches === 0) {
           return {
