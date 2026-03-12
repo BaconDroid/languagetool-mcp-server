@@ -1,4 +1,4 @@
-// Converts Markdown to LanguageTool AnnotatedText format.
+// Converts Markdown to LanguageTool AnnotatedText format using remark-parse.
 //
 // LanguageTool's `data` parameter accepts an annotation array where each
 // element is either:
@@ -7,231 +7,219 @@
 //
 // Reference: https://languagetool.org/http-api/swagger-ui/#!/default/post_check
 
+import { unified } from 'unified';
+import remarkParse from 'remark-parse';
+import type { Root, Node, Parent } from 'mdast';
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
 export type AnnotationPart =
   | { text: string }
   | { markup: string; interpretAs?: string };
 
 // ---------------------------------------------------------------------------
-// Internal region types
+// Internal types
 // ---------------------------------------------------------------------------
 
+/**
+ * A region of the source markdown string that should be treated as markup
+ * (i.e. not spell-checked). start is inclusive, end is exclusive (0-based
+ * character offsets into the original string).
+ */
 interface MarkupRegion {
   start: number;
-  end: number;          // exclusive
-  markup: string;
+  end: number;
   interpretAs?: string;
-  // Higher priority regions are kept when overlapping; code blocks win over
-  // everything else.
-  priority: number;
 }
 
 // ---------------------------------------------------------------------------
-// Pattern helpers
+// MarkdownParser interface (adapter contract)
 // ---------------------------------------------------------------------------
 
-// Finds all non-overlapping matches of a regex in a string and returns regions.
-function findRegions(
-  input: string,
-  pattern: RegExp,
-  toRegion: (match: RegExpExecArray) => MarkupRegion | MarkupRegion[] | null,
-): MarkupRegion[] {
-  const regions: MarkupRegion[] = [];
-  let m: RegExpExecArray | null;
-  // Reset lastIndex in case the regex is reused
-  pattern.lastIndex = 0;
-  while ((m = pattern.exec(input)) !== null) {
-    const result = toRegion(m);
-    if (result !== null) {
-      if (Array.isArray(result)) {
-        regions.push(...result);
-      } else {
-        regions.push(result);
-      }
-    }
-    // Avoid infinite loops on zero-length matches
-    if (m[0].length === 0) {
-      pattern.lastIndex++;
-    }
-  }
-  return regions;
+/**
+ * Adapter interface for the markdown parser. Allows dependency injection in
+ * markdownToAnnotatedText and makes the implementation swappable without
+ * touching the public API.
+ */
+interface MarkdownParser {
+  extractMarkupRegions(markdown: string): MarkupRegion[];
 }
 
 // ---------------------------------------------------------------------------
-// Individual element extractors
+// RemarkMarkdownParser – concrete adapter using unified + remark-parse
 // ---------------------------------------------------------------------------
 
-// Fenced code blocks: ```...``` or ~~~...~~~  (highest priority)
-function fencedCodeBlockRegions(input: string): MarkupRegion[] {
-  const pattern = /^(`{3,}|~{3,})[^\n]*\n[\s\S]*?\n\1\s*$/gm;
-  return findRegions(input, pattern, (m) => ({
-    start: m.index,
-    end: m.index + m[0].length,
-    markup: m[0],
-    interpretAs: '\n\n',
-    priority: 100,
-  }));
-}
+class RemarkMarkdownParser implements MarkdownParser {
+  private readonly processor = unified().use(remarkParse);
 
-// Inline code: `code`  (must not span newlines)
-function inlineCodeRegions(input: string): MarkupRegion[] {
-  const pattern = /`[^`\n]+`/g;
-  return findRegions(input, pattern, (m) => ({
-    start: m.index,
-    end: m.index + m[0].length,
-    markup: m[0],
-    interpretAs: '',
-    priority: 50,
-  }));
-}
-
-// HTML comments: <!-- ... -->
-function htmlCommentRegions(input: string): MarkupRegion[] {
-  const pattern = /<!--[\s\S]*?-->/g;
-  return findRegions(input, pattern, (m) => ({
-    start: m.index,
-    end: m.index + m[0].length,
-    markup: m[0],
-    priority: 80,
-  }));
-}
-
-// Images: ![alt](url)  – entire element is markup, alt text is not checked
-function imageRegions(input: string): MarkupRegion[] {
-  const pattern = /!\[[^\]]*\]\([^)]*\)/g;
-  return findRegions(input, pattern, (m) => ({
-    start: m.index,
-    end: m.index + m[0].length,
-    markup: m[0],
-    interpretAs: '',
-    priority: 70,
-  }));
-}
-
-// Links: [text](url) – the brackets and URL are markup, the link text is checked.
-// Returns two markup regions (opening `[` and closing `](url)`).
-function linkRegions(input: string): MarkupRegion[] {
-  // Negative look-behind for `!` to avoid matching images already handled above
-  const pattern = /(?<!!)\[([^\]]*)\]\(([^)]*)\)/g;
-  return findRegions(input, pattern, (m) => {
-    const openBracket  = m.index;
-    const closeParen   = m.index + m[0].length;
-    const textEnd      = m.index + 1 + m[1].length;
-    // Markup region 1: `[`
-    const open: MarkupRegion = {
-      start: openBracket,
-      end: openBracket + 1,
-      markup: '[',
-      priority: 60,
-    };
-    // Markup region 2: `](url)`
-    const close: MarkupRegion = {
-      start: textEnd,
-      end: closeParen,
-      markup: `](${m[2]})`,
-      priority: 60,
-    };
-    return [open, close];
-  });
-}
-
-// Heading markers: `# `, `## `, etc. at start of line – only the hashes + space
-function headingMarkerRegions(input: string): MarkupRegion[] {
-  const pattern = /^(#{1,6} )/gm;
-  return findRegions(input, pattern, (m) => ({
-    start: m.index,
-    end: m.index + m[1].length,
-    markup: m[1],
-    priority: 40,
-  }));
-}
-
-// Bold/italic markers: **, *, __, _
-// Only the delimiters are markup; the surrounded text is kept as-is.
-function emphasisMarkerRegions(input: string): MarkupRegion[] {
-  // Match paired delimiters. Order: ** before * and __ before _ to avoid
-  // partial matches.
-  const pattern = /(\*\*|__|[*_])([\s\S]*?)\1/g;
-  return findRegions(input, pattern, (m) => {
-    const delimiter  = m[1];
-    const innerStart = m.index + delimiter.length;
-    const innerEnd   = m.index + m[0].length - delimiter.length;
-
-    // Opening delimiter
-    const open: MarkupRegion = {
-      start: m.index,
-      end: innerStart,
-      markup: delimiter,
-      priority: 30,
-    };
-    // Closing delimiter
-    const close: MarkupRegion = {
-      start: innerEnd,
-      end: m.index + m[0].length,
-      markup: delimiter,
-      priority: 30,
-    };
-    return [open, close];
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Region merger: resolve overlaps
-// ---------------------------------------------------------------------------
-
-function mergeRegions(regions: MarkupRegion[]): MarkupRegion[] {
-  // Sort by start position; on tie, higher priority wins
-  const sorted = [...regions].sort((a, b) =>
-    a.start !== b.start ? a.start - b.start : b.priority - a.priority,
-  );
-
-  const result: MarkupRegion[] = [];
-  let cursor = 0;
-
-  for (const region of sorted) {
-    if (region.start < cursor) {
-      // Overlaps with a previously accepted region – skip
-      continue;
-    }
-    result.push(region);
-    cursor = region.end;
+  extractMarkupRegions(markdown: string): MarkupRegion[] {
+    const tree = this.processor.parse(markdown) as Root;
+    const regions: MarkupRegion[] = [];
+    this.visitNode(tree, markdown, regions);
+    return regions;
   }
 
-  return result;
+  // -------------------------------------------------------------------------
+  // Tree traversal
+  // -------------------------------------------------------------------------
+
+  private visitNode(node: Node, markdown: string, regions: MarkupRegion[]): void {
+    switch (node.type) {
+      // Entire node becomes markup ─ not checked
+      case 'code':
+        this.addWholeNode(node, regions, '\n');
+        break;
+
+      case 'inlineCode':
+      case 'image':
+      case 'imageReference':
+      case 'html':
+      case 'definition':
+        this.addWholeNode(node, regions, '');
+        break;
+
+      // Links: syntax parts are markup, link text is kept for checking
+      case 'link':
+      case 'linkReference':
+        this.visitLinkNode(node as Node & Parent, regions);
+        break;
+
+      // All other nodes: recurse into children, no markup region for the node
+      // itself (e.g. paragraph, heading, emphasis, strong, blockquote, etc.)
+      default:
+        if ('children' in node) {
+          for (const child of (node as Parent).children) {
+            this.visitNode(child, markdown, regions);
+          }
+        }
+        break;
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Helper: mark an entire node as a single markup region
+  // -------------------------------------------------------------------------
+
+  private addWholeNode(
+    node: Node,
+    regions: MarkupRegion[],
+    interpretAs: string,
+  ): void {
+    const pos = node.position;
+    if (!pos) return;
+    const start = pos.start.offset;
+    const end = pos.end.offset;
+    if (start == null || end == null) return;
+    regions.push({ start, end, interpretAs });
+  }
+
+  // -------------------------------------------------------------------------
+  // Helper: handle link / linkReference nodes
+  //
+  // Structure in source:   [link text](url)
+  //                         ^         ^    ^
+  //                         |         |    node.end
+  //                         |         firstChild.end / lastChild.end
+  //                         node.start
+  //
+  // We emit:
+  //   markup  "[" (from node.start to firstChild.start)
+  //   <recurse children>
+  //   markup  "](url)" (from lastChild.end to node.end)
+  // -------------------------------------------------------------------------
+
+  private visitLinkNode(node: Node & Parent, regions: MarkupRegion[]): void {
+    const pos = node.position;
+    if (!pos) return;
+    const nodeStart = pos.start.offset;
+    const nodeEnd = pos.end.offset;
+    if (nodeStart == null || nodeEnd == null) return;
+
+    const children = node.children;
+
+    if (children.length === 0) {
+      // No children (e.g. empty link) – treat entire node as markup
+      regions.push({ start: nodeStart, end: nodeEnd, interpretAs: '' });
+      return;
+    }
+
+    const firstChild = children[0];
+    const lastChild = children[children.length - 1];
+
+    const firstChildStart = firstChild.position?.start.offset;
+    const lastChildEnd = lastChild.position?.end.offset;
+
+    if (firstChildStart == null || lastChildEnd == null) {
+      // Fallback: mark whole node as markup if offsets are unavailable
+      regions.push({ start: nodeStart, end: nodeEnd, interpretAs: '' });
+      return;
+    }
+
+    // Opening bracket + anything before the first child's text
+    if (firstChildStart > nodeStart) {
+      regions.push({ start: nodeStart, end: firstChildStart });
+    }
+
+    // Recurse into children so nested markup is handled correctly
+    for (const child of children) {
+      this.visitNode(child, '', regions);
+    }
+
+    // Closing part: "](url)" or "]" etc.
+    if (nodeEnd > lastChildEnd) {
+      regions.push({ start: lastChildEnd, end: nodeEnd });
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
-// Main export
+// Public function
 // ---------------------------------------------------------------------------
 
-export function markdownToAnnotatedText(markdown: string): AnnotationPart[] {
-  // Collect all candidate regions
-  const candidates: MarkupRegion[] = [
-    ...fencedCodeBlockRegions(markdown),
-    ...inlineCodeRegions(markdown),
-    ...htmlCommentRegions(markdown),
-    ...imageRegions(markdown),
-    ...linkRegions(markdown),
-    ...headingMarkerRegions(markdown),
-    ...emphasisMarkerRegions(markdown),
-  ];
+const defaultParser: MarkdownParser = new RemarkMarkdownParser();
 
-  const merged = mergeRegions(candidates);
+/**
+ * Converts a Markdown string to a LanguageTool AnnotatedText array.
+ *
+ * Markup syntax (code blocks, inline code, images, HTML, link syntax, etc.)
+ * is wrapped in `{ markup }` parts so LanguageTool skips them. Plain text
+ * content is wrapped in `{ text }` parts and will be spell/grammar checked.
+ *
+ * @param markdown - The Markdown source string.
+ * @param parser   - Optional parser adapter (defaults to RemarkMarkdownParser).
+ *                   Inject a custom implementation in tests or to swap parsers.
+ */
+export function markdownToAnnotatedText(
+  markdown: string,
+  parser: MarkdownParser = defaultParser,
+): AnnotationPart[] {
+  const regions = parser.extractMarkupRegions(markdown);
 
-  // Build annotation parts by walking through the original string
+  // Sort regions by start position (ascending)
+  const sorted = [...regions].sort((a, b) => a.start - b.start);
+
   const parts: AnnotationPart[] = [];
   let pos = 0;
 
-  for (const region of merged) {
-    // Text before this markup region
+  for (const region of sorted) {
+    // Skip regions that start before the current cursor (overlap / duplicate)
+    if (region.start < pos) continue;
+
+    // Plain text segment before this markup region
     if (region.start > pos) {
       parts.push({ text: markdown.slice(pos, region.start) });
     }
-    // The markup region itself
-    const part: { markup: string; interpretAs?: string } = { markup: region.markup };
+
+    // Markup region
+    const markupStr = markdown.slice(region.start, region.end);
+    const part: { markup: string; interpretAs?: string } = { markup: markupStr };
     if (region.interpretAs !== undefined) {
       part.interpretAs = region.interpretAs;
     }
     parts.push(part);
+
     pos = region.end;
   }
 
@@ -240,7 +228,7 @@ export function markdownToAnnotatedText(markdown: string): AnnotationPart[] {
     parts.push({ text: markdown.slice(pos) });
   }
 
-  // Filter out empty text/markup parts that contribute nothing
+  // Filter out empty parts that contribute nothing
   return parts.filter((p) =>
     'text' in p ? p.text.length > 0 : p.markup.length > 0,
   );
