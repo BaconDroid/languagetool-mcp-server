@@ -5,7 +5,7 @@ MCP-Server für die **LanguageTool Pro API** – bringt Rechtschreib-, Grammatik
 ## Voraussetzungen
 
 - Node.js ≥ 18
-- LanguageTool Pro Konto (API-Zugang)
+- LanguageTool Pro-Konto (API-Zugang)
 - API-Zugangsdaten: Benutzername (E-Mail) + API-Key
 
 Den API-Key findet man unter: https://languagetool.org/editor/settings/access-tokens
