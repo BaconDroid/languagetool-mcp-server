@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { checkText } from '../services/languagetool.js';
+import { markdownToAnnotatedText } from '../services/markdown.js';
 import { CATEGORY_LABELS } from '../constants.js';
 import type { CheckResult, FormattedMatch, IssueCategory } from '../types.js';
 
@@ -121,6 +122,9 @@ Beispiele:
         enabled_rules: z.array(z.string())
           .default([])
           .describe('Zusätzliche Regel-IDs, die aktiviert werden sollen'),
+        format: z.enum(['plain', 'markdown'])
+          .default('plain')
+          .describe('Textformat: "plain" für reinen Text, "markdown" für Markdown (Markup-Elemente wie Code-Blöcke, Links und Formatierungen werden bei der Prüfung übersprungen)'),
       }).strict(),
       annotations: {
         readOnlyHint: true,
@@ -129,9 +133,12 @@ Beispiele:
         openWorldHint: true,
       },
     },
-    async ({ text, language, picky, disabled_rules, enabled_rules }) => {
+    async ({ text, language, picky, disabled_rules, enabled_rules, format }) => {
       try {
-        const result = await checkText(text, language, false, picky, disabled_rules, enabled_rules);
+        const annotatedText = format === 'markdown'
+          ? markdownToAnnotatedText(text)
+          : undefined;
+        const result = await checkText(text, language, false, picky, disabled_rules, enabled_rules, annotatedText);
         const markdown = formatResultMarkdown(result, text);
         return {
           content: [{ type: 'text', text: markdown }],
@@ -175,6 +182,9 @@ Returns:
         picky: z.boolean()
           .default(false)
           .describe('Strengere Prüfung aktivieren'),
+        format: z.enum(['plain', 'markdown'])
+          .default('plain')
+          .describe('Textformat: "plain" für reinen Text, "markdown" für Markdown'),
       }).strict(),
       annotations: {
         readOnlyHint: true,
@@ -183,9 +193,12 @@ Returns:
         openWorldHint: true,
       },
     },
-    async ({ text, language, picky }) => {
+    async ({ text, language, picky, format }) => {
       try {
-        const result = await checkText(text, language, false, picky);
+        const annotatedText = format === 'markdown'
+          ? markdownToAnnotatedText(text)
+          : undefined;
+        const result = await checkText(text, language, false, picky, [], [], annotatedText);
 
         if (result.totalMatches === 0) {
           return {

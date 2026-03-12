@@ -6,6 +6,7 @@ import type {
   FormattedMatch,
   IssueCategory,
 } from '../types.js';
+import type { AnnotationPart } from './markdown.js';
 
 // ---------------------------------------------------------------------------
 // Auth helper
@@ -98,6 +99,7 @@ export async function checkText(
   picky: boolean = false,
   disabledRules: string[] = [],
   enabledRules: string[] = [],
+  annotatedText?: AnnotationPart[],
 ): Promise<CheckResult> {
   if (text.length > CHARACTER_LIMIT) {
     throw new Error(
@@ -105,10 +107,13 @@ export async function checkText(
     );
   }
 
-  const params: Record<string, string> = {
-    text,
-    language,
-  };
+  const params: Record<string, string> = { language };
+
+  if (annotatedText) {
+    params['data'] = JSON.stringify({ annotation: annotatedText });
+  } else {
+    params['text'] = text;
+  }
 
   if (picky)                        params['level']         = 'picky';
   if (enabledOnly)                  params['enabledOnly']   = 'true';
