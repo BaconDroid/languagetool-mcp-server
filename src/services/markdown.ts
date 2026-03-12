@@ -73,9 +73,15 @@ class RemarkMarkdownParser implements MarkdownParser {
         this.addWholeNode(node, regions, '\n');
         break;
 
+      // Inline elements: use 'X' as placeholder so LT treats them as a word.
+      // Using '' would collapse surrounding spaces and trigger false positives
+      // like "unnecessary space before (…)".
       case 'inlineCode':
       case 'image':
       case 'imageReference':
+        this.addWholeNode(node, regions, 'X');
+        break;
+
       case 'html':
       case 'definition':
       // GFM tables: pipe chars, alignment and separator rows create too much
@@ -89,6 +95,26 @@ class RemarkMarkdownParser implements MarkdownParser {
       case 'linkReference':
         this.visitLinkNode(node as Node & Parent, regions);
         break;
+
+      // List items: mark the bullet/number marker (e.g. "- ", "* ", "1. ")
+      // as markup so LT does not interpret hyphens as dashes or flags them
+      // as unnecessary punctuation.
+      case 'listItem': {
+        const listItem = node as Node & Parent;
+        const pos = listItem.position;
+        if (pos && listItem.children.length > 0) {
+          const firstChild = listItem.children[0];
+          const listItemStart = pos.start.offset;
+          const firstChildStart = firstChild.position?.start.offset;
+          if (listItemStart != null && firstChildStart != null && firstChildStart > listItemStart) {
+            regions.push({ start: listItemStart, end: firstChildStart });
+          }
+        }
+        for (const child of listItem.children) {
+          this.visitNode(child, markdown, regions);
+        }
+        break;
+      }
 
       // All other nodes: recurse into children, no markup region for the node
       // itself (e.g. paragraph, heading, emphasis, strong, blockquote, etc.)
