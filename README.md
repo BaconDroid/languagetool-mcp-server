@@ -1,58 +1,61 @@
 # languagetool-mcp-server
 
-MCP-Server für die **LanguageTool Pro API** – bringt Rechtschreib-, Grammatik- und Stilprüfung direkt in Claude Code und andere MCP-fähige Clients.
+MCP server for the **LanguageTool Pro API** — brings spell-checking, grammar, and style suggestions directly into Claude Code and other MCP-compatible clients.
 
-## Voraussetzungen
+📖 [Deutsche Dokumentation](README.de.md)
+
+---
+
+## Prerequisites
 
 - Node.js ≥ 18
-- LanguageTool Pro-Konto (API-Zugang)
-- API-Zugangsdaten: Benutzername (E-Mail) + API-Key
+- LanguageTool Pro account (API access required)
+- API credentials: username (email address) + API key
 
-Den API-Key findet man unter: https://languagetool.org/editor/settings/access-tokens
+Find your API key at: https://languagetool.org/editor/settings/access-tokens
 
 ---
 
 ## Installation
 
 ```bash
-# Abhängigkeiten installieren & bauen
 npm install
 npm run build
 ```
 
 ---
 
-## Zugangsdaten
+## Credentials
 
-Der Server liest die Zugangsdaten aus Umgebungsvariablen:
+The server reads credentials from environment variables:
 
-| Variable       | Beschreibung                              |
-|---------------|-------------------------------------------|
-| `LT_USERNAME` | LanguageTool-Benutzername (E-Mail-Adresse) |
-| `LT_API_KEY`  | API-Key aus den Kontoeinstellungen        |
+| Variable       | Description                                  |
+|---------------|----------------------------------------------|
+| `LT_USERNAME` | LanguageTool username (email address)        |
+| `LT_API_KEY`  | API key from your account settings           |
 
 ---
 
-## Einrichtung in Claude Code (stdio – empfohlen für lokal)
+## Setup in Claude Code (stdio — recommended for local use)
 
-In `~/.claude/claude_desktop_config.json` (Windows: `%APPDATA%\Claude\claude_desktop_config.json`):
+Add to `~/.claude/claude_desktop_config.json` (Windows: `%APPDATA%\Claude\claude_desktop_config.json`):
 
 ```json
 {
   "mcpServers": {
     "languagetool": {
       "command": "node",
-      "args": ["C:/dev.local/mcp-servers/languagetool-mcp-server/dist/index.js"],
+      "args": ["/path/to/languagetool-mcp-server/dist/index.js"],
       "env": {
-        "LT_USERNAME": "deine@email.de",
-        "LT_API_KEY":  "dein-api-key"
+        "LT_USERNAME": "your@email.com",
+        "LT_API_KEY":  "your-api-key"
       }
     }
   }
 }
 ```
 
-**Alternativ mit `npx` direkt aus dem Projektordner:**
+**Alternative — run directly from the project folder:**
 
 ```json
 {
@@ -60,10 +63,10 @@ In `~/.claude/claude_desktop_config.json` (Windows: `%APPDATA%\Claude\claude_des
     "languagetool": {
       "command": "node",
       "args": ["dist/index.js"],
-      "cwd": "C:/dev.local/mcp-servers/languagetool-mcp-server",
+      "cwd": "/path/to/languagetool-mcp-server",
       "env": {
-        "LT_USERNAME": "deine@email.de",
-        "LT_API_KEY":  "dein-api-key"
+        "LT_USERNAME": "your@email.com",
+        "LT_API_KEY":  "your-api-key"
       }
     }
   }
@@ -72,14 +75,13 @@ In `~/.claude/claude_desktop_config.json` (Windows: `%APPDATA%\Claude\claude_des
 
 ---
 
-## Einrichtung als HTTP-Server (für mehrere Clients)
+## Setup as HTTP server (for multiple clients)
 
 ```bash
-# Server starten
-LT_USERNAME=deine@email.de LT_API_KEY=dein-key TRANSPORT=http PORT=3456 node dist/index.js
+LT_USERNAME=your@email.com LT_API_KEY=your-key TRANSPORT=http PORT=3456 node dist/index.js
 ```
 
-Dann in der MCP-Konfiguration:
+Then in your MCP configuration:
 
 ```json
 {
@@ -92,55 +94,58 @@ Dann in der MCP-Konfiguration:
 }
 ```
 
-Health-Check: `GET http://localhost:3456/health`
+Health check: `GET http://localhost:3456/health`
 
 ---
 
-## Verfügbare Tools
+## Available Tools
 
 ### `lt_check_text`
-Vollständige Textprüfung mit kategorisierten Hinweisen und Korrekturvorschlägen.
+Full text check with categorized suggestions and corrections.
 
-**Parameter:**
-- `text` – der zu prüfende Text (max. 40.000 Zeichen)
-- `language` – Sprachcode (`de-DE`, `en-US`, …) oder `auto` (Standard)
-- `picky` – strengere Prüfung mit mehr Stil-Hinweisen (Standard: `false`)
-- `disabled_rules` – Regel-IDs, die ignoriert werden sollen
-- `enabled_rules` – zusätzliche Regel-IDs
+**Parameters:**
+- `text` — text to check (max. 40,000 characters)
+- `language` — language code (`de-DE`, `en-US`, …) or `auto` (default)
+- `picky` — stricter checking with more style hints (default: `false`)
+- `disabled_rules` — rule IDs to ignore
+- `enabled_rules` — additional rule IDs to enable
 
 ### `lt_check_text_summary`
-Kompakte Zusammenfassung (eine Zeile) ohne Einzeldetails – nützlich für schnelle Checks.
+Compact one-line summary without individual details — useful for quick checks.
 
 ### `lt_list_languages`
-Alle unterstützten Sprachen mit Sprachcodes. Optional mit `filter`-Parameter.
+All supported languages with language codes. Optionally filterable via `filter` parameter.
 
 ---
 
-## Kategorien
+## Categories
 
-| Symbol | Kategorie       |
-|--------|----------------|
-| 🔴     | Rechtschreibung |
-| 🟠     | Grammatik       |
-| 🟡     | Zeichensetzung  |
-| 🔵     | Stil            |
-| ⚪     | Typografie      |
-| ⚫     | Sonstiges       |
+| Icon | Category       |
+|------|----------------|
+| 🔴   | Spelling       |
+| 🟠   | Grammar        |
+| 🟡   | Punctuation    |
+| 🔵   | Style          |
+| ⚪   | Typography     |
+| ⚫   | Other          |
 
 ---
 
-## Entwicklung
+## Development
 
 ```bash
-# TypeScript im Watch-Modus
+# Watch mode
 npm run dev
 
-# Einmalig bauen
+# Single build
 npm run build
+
+# Type check only
+npm run typecheck
 ```
 
 ---
 
-## Lizenz
+## License
 
 [MIT](LICENSE) © 2026 Dominik Pesch

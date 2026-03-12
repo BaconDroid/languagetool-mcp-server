@@ -2,6 +2,13 @@
   "name": "languagetool-mcp-server",
   "version": "1.0.0",
   "description": "MCP server for LanguageTool Pro API – spelling, grammar, style",
+  "author": "Dominik Pesch",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://codeberg.org/dpesch/languagetool-mcp-server"
+  },
+  "keywords": ["mcp", "languagetool", "grammar", "spellcheck", "model-context-protocol"],
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
@@ -21,7 +28,6 @@
     "@types/node": "^20.0.0",
     "typescript": "^5.3.0"
   },
-  "license": "MIT",
   "engines": {
     "node": ">=18"
   }
