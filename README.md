@@ -121,7 +121,7 @@ Alle unterstützten Sprachen mit Sprachcodes. Optional mit `filter`-Parameter.
 | Symbol | Kategorie       |
 |--------|----------------|
 | 🔴     | Rechtschreibung |
-| 🟠     | Grammatik       |ok,
+| 🟠     | Grammatik       |
 | 🟡     | Zeichensetzung  |
 | 🔵     | Stil            |
 | ⚪     | Typografie      |
