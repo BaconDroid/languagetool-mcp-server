@@ -1,5 +1,5 @@
 {
-  "name": "languagetool-mcp-server",
+  "name": "@dpesch/languagetool-mcp-server",
   "version": "1.0.0",
   "description": "MCP server for LanguageTool Pro API – spelling, grammar, style",
   "author": "Dominik Pesch",
@@ -10,6 +10,9 @@
   },
   "keywords": ["mcp", "languagetool", "grammar", "spellcheck", "model-context-protocol"],
   "main": "dist/index.js",
+  "bin": {
+    "languagetool-mcp-server": "dist/index.js"
+  },
   "type": "module",
   "scripts": {
     "build": "tsc",

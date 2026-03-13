@@ -2,6 +2,8 @@
 
 MCP server for the **LanguageTool Pro API** — brings spell-checking, grammar, and style suggestions directly into Claude Code and other MCP-compatible clients.
 
+> **⚠️ LanguageTool Pro required** — This server uses the LanguageTool Pro API. A paid [LanguageTool Pro subscription](https://languagetool.org/pro) with API access is required. The free tier does not provide API access.
+
 📖 [Deutsche Dokumentation](README.de.md)
 
 ---
@@ -9,7 +11,7 @@ MCP server for the **LanguageTool Pro API** — brings spell-checking, grammar, 
 ## Prerequisites
 
 - Node.js ≥ 18
-- LanguageTool Pro account (API access required)
+- **LanguageTool Pro account** with API access ([subscription required](https://languagetool.org/pro))
 - API credentials: username (email address) + API key
 
 Find your API key at: https://languagetool.org/editor/settings/access-tokens
@@ -18,7 +20,15 @@ Find your API key at: https://languagetool.org/editor/settings/access-tokens
 
 ## Installation
 
+**Option A — via npx (no installation needed):**
+
+Use `npx @dpesch/languagetool-mcp-server` directly in your MCP config (see Setup below).
+
+**Option B — clone and build:**
+
 ```bash
+git clone https://codeberg.org/dpesch/languagetool-mcp-server
+cd languagetool-mcp-server
 npm install
 npm run build
 ```
@@ -40,12 +50,14 @@ The server reads credentials from environment variables:
 
 Add to `~/.claude/claude_desktop_config.json` (Windows: `%APPDATA%\Claude\claude_desktop_config.json`):
 
+**Option A — via npx (recommended, no build step):**
+
 ```json
 {
   "mcpServers": {
     "languagetool": {
-      "command": "node",
-      "args": ["/path/to/languagetool-mcp-server/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "@dpesch/languagetool-mcp-server"],
       "env": {
         "LT_USERNAME": "your@email.com",
         "LT_API_KEY":  "your-api-key"
@@ -55,15 +67,14 @@ Add to `~/.claude/claude_desktop_config.json` (Windows: `%APPDATA%\Claude\claude
 }
 ```
 
-**Alternative — run directly from the project folder:**
+**Option B — local build:**
 
 ```json
 {
   "mcpServers": {
     "languagetool": {
       "command": "node",
-      "args": ["dist/index.js"],
-      "cwd": "/path/to/languagetool-mcp-server",
+      "args": ["/path/to/languagetool-mcp-server/dist/index.js"],
       "env": {
         "LT_USERNAME": "your@email.com",
         "LT_API_KEY":  "your-api-key"
