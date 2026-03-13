@@ -1,5 +1,8 @@
 # languagetool-mcp-server
 
+[![npm version](https://img.shields.io/npm/v/@dpesch/languagetool-mcp-server)](https://www.npmjs.com/package/@dpesch/languagetool-mcp-server)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 MCP server for the **LanguageTool Pro API** — brings spell-checking, grammar, and style suggestions directly into Claude Code and other MCP-compatible clients.
 
 > **⚠️ LanguageTool Pro required** — This server uses the LanguageTool Pro API. A paid [LanguageTool Pro subscription](https://languagetool.org/pro) with API access is required. The free tier does not provide API access.
@@ -20,11 +23,9 @@ Find your API key at: https://languagetool.org/editor/settings/access-tokens
 
 ## Installation
 
-**Option A — via npx (no installation needed):**
+No installation needed — use `npx @dpesch/languagetool-mcp-server` directly in your MCP config (see Setup below).
 
-Use `npx @dpesch/languagetool-mcp-server` directly in your MCP config (see Setup below).
-
-**Option B — clone and build:**
+**Alternative — clone and build locally:**
 
 ```bash
 git clone https://codeberg.org/dpesch/languagetool-mcp-server
@@ -50,8 +51,6 @@ The server reads credentials from environment variables:
 
 Add to `~/.claude/claude_desktop_config.json` (Windows: `%APPDATA%\Claude\claude_desktop_config.json`):
 
-**Option A — via npx (recommended, no build step):**
-
 ```json
 {
   "mcpServers": {
@@ -67,7 +66,7 @@ Add to `~/.claude/claude_desktop_config.json` (Windows: `%APPDATA%\Claude\claude
 }
 ```
 
-**Option B — local build:**
+**If you prefer a local build** (replace `/path/to/...` with your actual path):
 
 ```json
 {

@@ -189,6 +189,22 @@ The version follows the `MAJOR.MINOR` format independently of the package versio
 {
   "mcpServers": {
     "languagetool": {
+      "command": "npx",
+      "args": ["-y", "@dpesch/languagetool-mcp-server"],
+      "env": {
+        "LT_USERNAME": "your@email.com",
+        "LT_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+Local build (replace path accordingly):
+```json
+{
+  "mcpServers": {
+    "languagetool": {
       "command": "node",
       "args": ["C:/dev.local/mcp-servers/languagetool-mcp-server/dist/index.js"],
       "env": {
@@ -207,30 +223,28 @@ LT_USERNAME=... LT_API_KEY=... TRANSPORT=http PORT=3456 node dist/index.js
 
 ---
 
-## Open-source setup: what still needs to be done
-
-The project is intended to be published as an open-source project. The following tasks are pending:
+## Open-source setup: status
 
 ### Repository setup
-- [ ] Create GitHub repository (name: `languagetool-mcp-server`)
+- [x] Repository published on Codeberg: `codeberg.org/dpesch/languagetool-mcp-server`
 - [x] Choose a license — **MIT** (LICENSE file present, package.json updated)
-- [ ] Create `.gitignore` for Node.js (`node_modules/`, `dist/`)
-- [ ] Create `CHANGELOG.md`
-- [ ] Create `CONTRIBUTING.md` (guidelines for contributors)
+- [x] Create `.gitignore` for Node.js (`node_modules/`, `dist/`)
+- [x] Create `CHANGELOG.md`
+- [x] Create `CONTRIBUTING.md`
 
-### package.json additions
-- [ ] Add `repository` field with GitHub URL
-- [ ] Set `license` field
-- [ ] Add `keywords`: `["mcp", "languagetool", "grammar", "spellcheck", "model-context-protocol"]`
-- [ ] Set `author` field
-- [ ] Add `engines` field: `{ "node": ">=18" }`
+### package.json
+- [x] `repository` field set (Codeberg URL)
+- [x] `license` field set (`MIT`)
+- [x] `keywords` set: `["mcp", "languagetool", "grammar", "spellcheck", "model-context-protocol"]`
+- [x] `author` field set
+- [x] `engines` field set: `{ "node": ">=18" }`
 
 ### CI/CD
-- [ ] GitHub Actions workflow for automatic build & test on push
-- [ ] Optional: publish npm package (then usable via `npx languagetool-mcp-server`)
+- [ ] CI workflow for automatic build & test on push
+- [x] Published on npm as `@dpesch/languagetool-mcp-server` (usable via `npx`)
 
 ### Documentation
-- [ ] README.md is present and solid — optionally add badges (npm version, license, build status)
+- [x] README.md with badges (npm version, license)
 - [ ] Apply for inclusion in the official MCP server index: https://github.com/modelcontextprotocol/servers
 
 ### Tests
