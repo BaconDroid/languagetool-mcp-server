@@ -1,177 +1,175 @@
 @.claude/lessons.md
 
-# CLAUDE.md – Projektkontext für Claude Code
+# CLAUDE.md – Project context for Claude Code
 
-Diese Datei gibt Claude Code den vollständigen Kontext über Entstehung, Design-Entscheidungen und offene Aufgaben des `languagetool-mcp-server`-Projekts.
-
----
-
-## Was ist dieses Projekt?
-
-Ein **MCP-Server** (Model Context Protocol), der die **LanguageTool Pro API** anbindet und damit Rechtschreib-, Grammatik-, Stil- und Typografieprüfung direkt in Claude Code und andere MCP-fähige Clients bringt.
-
-**Warum wurde es gebaut?** Der Projektinhaber hat ein LanguageTool Pro-Abo und wollte die API per MCP für Claude nutzbar machen – damit Texte, die Claude schreibt oder überarbeitet, direkt gegen LanguageTool geprüft werden können, ohne manuell copy-pasten zu müssen.
-
-**Gibt es vergleichbare Projekte?** Nein. Eine Recherche auf GitHub und Codeberg ergab: Es existiert kein MCP-Server für die LanguageTool (Pro) API. Die gefundenen `mcp-language-server`- und `languagetool-language-server`-Repos sind LSP-Server (Language Server Protocol für Code-Editoren) – konzeptuell etwas völlig anderes. Dieses Projekt füllt eine echte Lücke und ist ein guter Kandidat für den offiziellen MCP-Server-Index.
+This file gives Claude Code full context about the origin, design decisions, and open tasks of the `languagetool-mcp-server` project.
 
 ---
 
-## Tech-Stack und Design-Entscheidungen
+## What is this project?
 
-### Sprache & Framework
-- **TypeScript** mit dem offiziellen `@modelcontextprotocol/sdk`
-- Entscheidung für TypeScript (nicht Python/FastMCP), weil: bessere SDK-Unterstützung, statische Typisierung, und der Projektinhaber arbeitet primär mit Node.js-Tools
+An **MCP server** (Model Context Protocol) that integrates the **LanguageTool Pro API**, bringing spell-checking, grammar, style, and typography checks directly into Claude Code and other MCP-capable clients.
+
+**Why was it built?** The project owner has a LanguageTool Pro subscription and wanted to make the API available to Claude via MCP — so that text Claude writes or revises can be checked against LanguageTool directly, without manual copy-pasting.
+
+**Are there comparable projects?** No. A search on GitHub and Codeberg found no MCP server for the LanguageTool (Pro) API. The `mcp-language-server` and `languagetool-language-server` repos found are LSP servers (Language Server Protocol for code editors) — conceptually something entirely different. This project fills a real gap and is a good candidate for the official MCP server index.
+
+---
+
+## Tech stack and design decisions
+
+### Language & framework
+- **TypeScript** with the official `@modelcontextprotocol/sdk`
+- Chose TypeScript (not Python/FastMCP) because: better SDK support, static typing, and the project owner works primarily with Node.js tools
 
 ### Transport
-- **stdio** als Standard (für lokale Claude Code / Claude Desktop Nutzung)
-- **HTTP** (Streamable HTTP) als Alternative via `TRANSPORT=http`-Umgebungsvariable – für Szenarien mit mehreren Clients oder Remote-Nutzung
-- Konfiguration über `process.env.TRANSPORT`
+- **stdio** as default (for local Claude Code / Claude Desktop use)
+- **HTTP** (Streamable HTTP) as alternative via `TRANSPORT=http` environment variable — for multi-client or remote scenarios
+- Configured via `process.env.TRANSPORT`
 
-### Projektstruktur
+### Project structure
 ```
 src/
-├── index.ts              ← Einstiegspunkt, Transport-Auswahl
-├── types.ts              ← Alle TypeScript-Interfaces (LtMatch, CheckResult, etc.)
-├── constants.ts          ← API-URL, Zeichenlimit, Kategorie-Mapping
+├── index.ts              ← Entry point, transport selection
+├── types.ts              ← All TypeScript interfaces (LtMatch, CheckResult, etc.)
+├── constants.ts          ← API URL, character limit, category mapping
 ├── services/
-│   └── languagetool.ts   ← API-Client (fetch-basiert, keine externen HTTP-libs)
+│   └── languagetool.ts   ← API client (fetch-based, no external HTTP libs)
 └── tools/
     ├── check.ts          ← lt_check_text + lt_check_text_summary
     └── languages.ts      ← lt_list_languages
 ```
 
-### Authentifizierung
-- Über Umgebungsvariablen `LT_USERNAME` (E-Mail) und `LT_API_KEY`
-- Kein Hardcoding, keine Config-Datei – bewusste Entscheidung für maximale Sicherheit und einfache CI/CD-Kompatibilität
-- API-Endpunkt: `https://api.languagetoolplus.com/v2`
+### Authentication
+- Via environment variables `LT_USERNAME` (email) and `LT_API_KEY`
+- No hardcoding, no config file — deliberate decision for maximum security and easy CI/CD compatibility
+- API endpoint: `https://api.languagetoolplus.com/v2`
 
-### LanguageTool-Features
-Folgende Features wurden bewusst eingebaut:
-- **Automatische Spracherkennung** (`language: "auto"`) als Standard
-- **Picky-Mode** (`level=picky`) für strengere Stil-Prüfung
-- **disabled_rules / enabled_rules** für granulare Kontrolle
-- Zeichenlimit: 40.000 Zeichen (LanguageTool Pro-Limit)
+### LanguageTool features
+The following features were deliberately included:
+- **Automatic language detection** (`language: "auto"`) as default
+- **Picky mode** (`level=picky`) for stricter style checking
+- **disabled_rules / enabled_rules** for granular control
+- Character limit: 40,000 characters (LanguageTool Pro limit)
 
-### Ausgabe-Format
-- Markdown-formatierter Bericht mit Kategorisierung nach: 🔴 Rechtschreibung, 🟠 Grammatik, 🟡 Zeichensetzung, 🔵 Stil, ⚪ Typografie, ⚫ Sonstiges
-- Zusätzlich `structuredContent` (JSON) im Tool-Response für programmatische Weiterverarbeitung
-- Kontext-Highlight: fehlerhafte Stelle wird mit `[eckigen Klammern]` markiert
+### Output format
+- Markdown-formatted report with categorization by: 🔴 Spelling, 🟠 Grammar, 🟡 Punctuation, 🔵 Style, ⚪ Typography, ⚫ Other
+- Additionally `structuredContent` (JSON) in the tool response for programmatic processing
+- Context highlight: the erroneous passage is marked with `[square brackets]`
 
 ---
 
-## Verfügbare Tools
+## Available tools
 
-| Tool-Name | Beschreibung |
+| Tool name | Description |
 |---|---|
-| `lt_check_text` | Vollständige Prüfung mit kategorisierten Hinweisen und Vorschlägen |
-| `lt_check_text_summary` | Einzeiler-Zusammenfassung (Anzahl Fehler pro Kategorie) |
-| `lt_list_languages` | Alle unterstützten Sprachen mit Sprachcodes, optional filterbar |
+| `lt_check_text` | Full check with categorized hints and suggestions |
+| `lt_check_text_summary` | Single-line summary (number of issues per category) |
+| `lt_list_languages` | All supported languages with language codes, optionally filterable |
 
 ---
 
-## Versionierung und Kompatibilitätsversprechen
+## Versioning and compatibility promise
 
-Dieses Projekt folgt [Semantic Versioning 2.0.0](https://semver.org/) und orientiert sich
-am Symfony Backward Compatibility Promise: Minor- und Patch-Releases dürfen keine
-unerwarteten Seiteneffekte für bestehende Integrationen verursachen.
+This project follows [Semantic Versioning 2.0.0](https://semver.org/) and is guided by the Symfony Backward Compatibility Promise: minor and patch releases must not cause unexpected side effects for existing integrations.
 
 ---
 
-### Was ist die öffentliche API dieses Projekts?
+### What is the public API of this project?
 
-Die öffentliche API umfasst alles, worauf MCP-Clients und externe Nutzer:innen sich verlassen:
+The public API encompasses everything that MCP clients and external users rely on:
 
-#### Tool-Schnittstellen (streng stabil)
-- **Tool-Namen:** `lt_check_text`, `lt_check_text_summary`, `lt_list_languages`
-  – Umbenennung oder Entfernung ist immer ein Breaking Change (→ major).
-- **Parameter-Namen und -Typen:** Bestehende Parameter dürfen nicht umbenannt,
-  entfernt oder in ihrer Semantik verändert werden (→ major).
-- **Pflicht-/Optional-Status:** Ein optionaler Parameter darf nicht zu einem
-  Pflichtparameter werden (→ major). Umgekehrt ist erlaubt (→ minor).
-- **Parameter-Defaults:** Änderungen an Standardwerten gelten als Breaking Change (→ major).
+#### Tool interfaces (strictly stable)
+- **Tool names:** `lt_check_text`, `lt_check_text_summary`, `lt_list_languages`
+  — Renaming or removing is always a breaking change (→ major).
+- **Parameter names and types:** Existing parameters must not be renamed,
+  removed, or changed in semantics (→ major).
+- **Required/optional status:** An optional parameter must not become
+  required (→ major). The reverse is allowed (→ minor).
+- **Parameter defaults:** Changes to default values count as a breaking change (→ major).
 
-#### `structuredContent`-Schema (versioniert, streng stabil)
-Das JSON-Objekt im `structuredContent`-Feld des Tool-Response ist versioniertes Kernfeature.
-Es enthält ein `schemaVersion`-Feld (z. B. `"1.0"`).
+#### `structuredContent` schema (versioned, strictly stable)
+The JSON object in the `structuredContent` field of the tool response is a versioned core feature.
+It contains a `schemaVersion` field (e.g. `"1.0"`).
 
-- Neue optionale Felder hinzufügen → minor
-- Bestehende Felder entfernen oder umbenennen → major
-- Typ eines bestehenden Felds ändern → major
-- `schemaVersion` wird bei jedem Breaking Change hochgezählt
+- Adding new optional fields → minor
+- Removing or renaming existing fields → major
+- Changing the type of an existing field → major
+- `schemaVersion` is incremented with every breaking change
 
-Aktuelles Schema: siehe `src/types.ts`, Interface `StructuredCheckResult`.
+Current schema: see `src/types.ts`, interface `StructuredCheckResult`.
 
-#### Umgebungsvariablen (streng stabil)
-Bestehende Variablen (`LT_USERNAME`, `LT_API_KEY`, `TRANSPORT`, `PORT`) dürfen
-in minor/patch nicht umbenannt oder entfernt werden (→ major).
-Neue optionale Variablen einführen ist erlaubt (→ minor).
+#### Environment variables (strictly stable)
+Existing variables (`LT_USERNAME`, `LT_API_KEY`, `TRANSPORT`, `PORT`) must not
+be renamed or removed in minor/patch releases (→ major).
+Introducing new optional variables is allowed (→ minor).
 
-#### Markdown-Ausgabe (teilweise stabil)
-- **Kategorie-Schlüssel** (🔴 Spelling, 🟠 Grammar, …) und ihre **Reihenfolge**
-  in der Ausgabe sind stabil (→ Änderung ist major).
-- **Darstellungsdetails** (Formatierung, Einrückung, Emoji-Stil) dürfen sich
-  in minor ändern, sofern alle Informationen vollständig erhalten bleiben.
-- Informationen entfernen ist immer breaking (→ major).
-
----
-
-### Was ist intern und kann sich jederzeit ändern?
-
-- Dateistruktur unter `src/` (Modulnamen, Klassen, interne Funktionen)
-- Interne TypeScript-Typen, die nicht Teil von `structuredContent` sind
-- Build-Konfiguration (`tsconfig.json`, `package.json`-Scripts)
-- Entwicklerwerkzeuge (Lint, Format, CI-Konfiguration)
+#### Markdown output (partially stable)
+- **Category keys** (🔴 Spelling, 🟠 Grammar, …) and their **order**
+  in the output are stable (→ change is major).
+- **Presentation details** (formatting, indentation, emoji style) may change
+  in minor releases, as long as all information is fully preserved.
+- Removing information is always breaking (→ major).
 
 ---
 
-### Versionsregeln im Überblick
+### What is internal and may change at any time?
 
-| Änderungstyp                                        | Version   |
-|-----------------------------------------------------|-----------|
-| Bugfix ohne Verhaltensänderung                      | patch     |
-| Neues optionales Tool-Parameter                     | minor     |
-| Neues Tool                                          | minor     |
-| Neue optionale Umgebungsvariable                    | minor     |
-| Neue optionale Felder in `structuredContent`        | minor     |
-| Darstellungsänderung (Markdown, Formatierung)       | minor     |
-| Tool-Name geändert oder entfernt                    | **major** |
-| Pflichtparameter hinzugefügt                        | **major** |
-| Parameter-Default geändert                          | **major** |
-| Bestehende Umgebungsvariable umbenannt/entfernt     | **major** |
-| Felder in `structuredContent` entfernt/umbenannt    | **major** |
-| `schemaVersion` erhöht                              | **major** |
-| Kategorie-Schlüssel oder -Reihenfolge geändert      | **major** |
+- File structure under `src/` (module names, classes, internal functions)
+- Internal TypeScript types that are not part of `structuredContent`
+- Build configuration (`tsconfig.json`, `package.json` scripts)
+- Developer tooling (lint, format, CI configuration)
 
 ---
 
-### Deprecation-Prozess
+### Versioning rules at a glance
 
-Soll etwas aus der öffentlichen API entfernt werden, gilt:
-
-1. In einem **minor**-Release als deprecated markieren (Hinweis im README und
-   in der Tool-Beschreibung im MCP-Response).
-2. Frühestens im **nächsten major**-Release entfernen.
-3. Im CHANGELOG.md unter `### Deprecated` dokumentieren.
+| Change type                                          | Version   |
+|------------------------------------------------------|-----------|
+| Bug fix without behavior change                      | patch     |
+| New optional tool parameter                          | minor     |
+| New tool                                             | minor     |
+| New optional environment variable                    | minor     |
+| New optional fields in `structuredContent`           | minor     |
+| Presentation change (Markdown, formatting)           | minor     |
+| Tool name changed or removed                         | **major** |
+| Required parameter added                             | **major** |
+| Parameter default changed                            | **major** |
+| Existing environment variable renamed/removed        | **major** |
+| Fields in `structuredContent` removed/renamed        | **major** |
+| `schemaVersion` incremented                          | **major** |
+| Category key or order changed                        | **major** |
 
 ---
 
-### Release-Checkliste
+### Deprecation process
 
-Vor jedem Release prüfen:
+To remove something from the public API:
 
-- [ ] Alle Änderungen seit letztem Tag dokumentiert in `CHANGELOG.md`
-- [ ] Versionsnummer in `package.json` gesetzt
-- [ ] Git-Tag gesetzt (`git tag v1.2.3`)
-- [ ] Geprüft: Entspricht der Versionstyp (patch/minor/major) den obigen Regeln?
-- [ ] Bei major: Migration-Hinweise im CHANGELOG unter `### Breaking Changes`
-- [ ] Bei Änderung an `structuredContent`: `schemaVersion` aktualisiert und
-      Interface `StructuredCheckResult` in `src/types.ts` angepasst
+1. Mark as deprecated in a **minor** release (note in README and
+   in the tool description in the MCP response).
+2. Remove no earlier than the **next major** release.
+3. Document in `CHANGELOG.md` under `### Deprecated`.
+
+---
+
+### Release checklist
+
+Before every release:
+
+- [ ] All changes since the last tag documented in `CHANGELOG.md`
+- [ ] Version number set in `package.json`
+- [ ] Git tag set (`git tag v1.2.3`)
+- [ ] Verified: does the version type (patch/minor/major) match the rules above?
+- [ ] For major: migration notes in CHANGELOG under `### Breaking Changes`
+- [ ] For changes to `structuredContent`: `schemaVersion` updated and
+      interface `StructuredCheckResult` in `src/types.ts` adjusted
 
 ---
 
 ### `schemaVersion` in `structuredContent`
 
-Jeder Tool-Response, der `structuredContent` enthält, liefert:
+Every tool response containing `structuredContent` provides:
 
 ```json
 {
@@ -180,12 +178,12 @@ Jeder Tool-Response, der `structuredContent` enthält, liefert:
 }
 ```
 
-Clients können dieses Feld auswerten, um Kompatibilität zu prüfen.
-Die Version folgt dem Format `MAJOR.MINOR` unabhängig von der Paketversion.
+Clients can evaluate this field to check compatibility.
+The version follows the `MAJOR.MINOR` format independently of the package version.
 
 ---
 
-## Konfiguration (Claude Desktop / Claude Code)
+## Configuration (Claude Desktop / Claude Code)
 
 ```json
 {
@@ -194,94 +192,94 @@ Die Version folgt dem Format `MAJOR.MINOR` unabhängig von der Paketversion.
       "command": "node",
       "args": ["C:/dev.local/mcp-servers/languagetool-mcp-server/dist/index.js"],
       "env": {
-        "LT_USERNAME": "deine@email.de",
-        "LT_API_KEY": "dein-api-key"
+        "LT_USERNAME": "your@email.com",
+        "LT_API_KEY": "your-api-key"
       }
     }
   }
 }
 ```
 
-HTTP-Modus:
+HTTP mode:
 ```bash
 LT_USERNAME=... LT_API_KEY=... TRANSPORT=http PORT=3456 node dist/index.js
 ```
 
 ---
 
-## Open-Source-Setup: Was noch zu tun ist
+## Open-source setup: what still needs to be done
 
-Das Projekt soll als Open-Source-Projekt veröffentlicht werden. Folgende Aufgaben stehen an:
+The project is intended to be published as an open-source project. The following tasks are pending:
 
-### Repository-Setup
-- [ ] GitHub-Repository anlegen (Name: `languagetool-mcp-server`)
-- [x] Passende Lizenz wählen – **MIT** (LICENSE-Datei vorhanden, package.json aktualisiert)
-- [ ] `.gitignore` für Node.js anlegen (`node_modules/`, `dist/`)
-- [ ] `CHANGELOG.md` anlegen
-- [ ] `CONTRIBUTING.md` anlegen (Hinweise für Beitragende)
+### Repository setup
+- [ ] Create GitHub repository (name: `languagetool-mcp-server`)
+- [x] Choose a license — **MIT** (LICENSE file present, package.json updated)
+- [ ] Create `.gitignore` for Node.js (`node_modules/`, `dist/`)
+- [ ] Create `CHANGELOG.md`
+- [ ] Create `CONTRIBUTING.md` (guidelines for contributors)
 
-### package.json ergänzen
-- [ ] `repository`-Feld mit GitHub-URL ergänzen
-- [ ] `license`-Feld setzen
-- [ ] `keywords` ergänzen: `["mcp", "languagetool", "grammar", "spellcheck", "model-context-protocol"]`
-- [ ] `author`-Feld setzen
-- [ ] `engines`-Feld: `{ "node": ">=18" }`
+### package.json additions
+- [ ] Add `repository` field with GitHub URL
+- [ ] Set `license` field
+- [ ] Add `keywords`: `["mcp", "languagetool", "grammar", "spellcheck", "model-context-protocol"]`
+- [ ] Set `author` field
+- [ ] Add `engines` field: `{ "node": ">=18" }`
 
 ### CI/CD
-- [ ] GitHub Actions Workflow für automatisches Build & Test bei Push
-- [ ] Optional: npm-Paket veröffentlichen (dann via `npx languagetool-mcp-server` nutzbar)
+- [ ] GitHub Actions workflow for automatic build & test on push
+- [ ] Optional: publish npm package (then usable via `npx languagetool-mcp-server`)
 
-### Dokumentation
-- [ ] README.md ist vorhanden und gut – ggf. Badges ergänzen (npm version, license, build status)
-- [ ] Einbindung in den offiziellen MCP-Server-Index beantragen: https://github.com/modelcontextprotocol/servers
+### Documentation
+- [ ] README.md is present and solid — optionally add badges (npm version, license, build status)
+- [ ] Apply for inclusion in the official MCP server index: https://github.com/modelcontextprotocol/servers
 
 ### Tests
-- [ ] Aktuell keine Tests vorhanden – Grundstruktur für Unit-Tests mit `vitest` oder `jest` aufsetzen
-- [ ] Mindestens: Mock-Tests für den API-Client und die Formatter-Funktionen
+- [ ] No tests yet — set up basic unit test structure with `vitest` or `jest`
+- [ ] At minimum: mock tests for the API client and formatter functions
 
-### Erweiterungsideen (Backlog)
-- [ ] `lt_check_file`-Tool: direkt eine Datei (z. B. Markdown) prüfen
-- [ ] Unterstützung für selbst-gehostete LanguageTool-Instanzen (eigene `LT_API_URL`-Env-Variable – Grundstruktur ist schon in `constants.ts` vorbereitet)
-- [ ] `lt_get_rule_info`-Tool: Details zu einer Regel-ID abrufen
-- [ ] Ergebnis-Cache (z. B. für wiederholte Prüfungen desselben Textes)
+### Extension ideas (backlog)
+- [ ] `lt_check_file` tool: check a file directly (e.g. Markdown)
+- [ ] Support for self-hosted LanguageTool instances (custom `LT_API_URL` env variable — basic structure already prepared in `constants.ts`)
+- [ ] `lt_get_rule_info` tool: fetch details for a rule ID
+- [ ] Result cache (e.g. for repeated checks of the same text)
 
 ---
 
-## SDK-Dokumentation via context7
+## SDK documentation via context7
 
-Das `@modelcontextprotocol/sdk` entwickelt sich aktiv. Für aktuelle API-Dokumentation immer context7 nutzen:
-- Tool-Response-Format, `structuredContent`, Transport-Klassen
+The `@modelcontextprotocol/sdk` is actively developed. Always use context7 for up-to-date API documentation:
+- Tool response format, `structuredContent`, transport classes
 - Resolver: `@modelcontextprotocol/sdk`
 
 ---
 
-## Stil-Hinweise für dieses Projekt
+## Style notes for this project
 
-Der Projektinhaber schreibt deutsche Texte und bevorzugt:
-- Anführungszeichen: »«
-- Gender-Doppelpunkt (Nutzer:innen), kein Genderstern
-- »allerdings« statt »aber«
-- »Vereinbarung« statt »Vertrag«
-- Korrekte Typografie (Gedankenstriche, schmales Leerzeichen bei Einheiten etc.)
+The project owner writes German texts and prefers:
+- Quotation marks: »«
+- Gender colon (Nutzer:innen), no gender star
+- »allerdings« instead of »aber«
+- »Vereinbarung« instead of »Vertrag«
+- Correct typography (em dashes, narrow space before units, etc.)
 
-Für Code und Kommentare gilt: Englisch (internationale Open-Source-Konvention).
-Für README und Dokumentation: Deutsch (primäre Zielgruppe) + Englisch (für internationale Nutzung sinnvoll – ggf. zweisprachige README).
+For code and comments: English (international open-source convention).
+For README and documentation: German (primary audience) + English (useful for international use — possibly a bilingual README).
 
 ---
 
-## Lokale Entwicklungsumgebung
+## Local development environment
 
 ```bash
-npm install          # Abhängigkeiten installieren
-npm run build        # TypeScript kompilieren → dist/
-npm run typecheck    # Typ-Check ohne Ausgabe (schnell, kein dist/-Schreibzugriff)
-npm run dev          # Watch-Modus für Entwicklung
-npm start            # Server starten (stdio)
+npm install          # Install dependencies
+npm run build        # Compile TypeScript → dist/
+npm run typecheck    # Type check without output (fast, no dist/ write access)
+npm run dev          # Watch mode for development
+npm start            # Start server (stdio)
 ```
 
-Umgebungsvariablen lokal setzen (PowerShell):
+Set environment variables locally (PowerShell):
 ```powershell
-$env:LT_USERNAME = "deine@email.de"
-$env:LT_API_KEY  = "dein-api-key"
+$env:LT_USERNAME = "your@email.com"
+$env:LT_API_KEY  = "your-api-key"
 node dist/index.js
 ```
