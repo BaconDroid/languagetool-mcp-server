@@ -3,7 +3,9 @@ import { z } from 'zod';
 import { checkText } from '../services/languagetool.js';
 import { markdownToAnnotatedText } from '../services/markdown.js';
 import { CATEGORY_LABELS } from '../constants.js';
-import type { CheckResult, FormattedMatch, IssueCategory } from '../types.js';
+import type { CheckResult, FormattedMatch, IssueCategory, StructuredCheckResult } from '../types.js';
+
+const SCHEMA_VERSION = '1.0';
 
 // ---------------------------------------------------------------------------
 // Markdown formatter
@@ -143,9 +145,10 @@ Beispiele:
           : disabled_rules;
         const result = await checkText(text, language, false, picky, effectiveDisabledRules, enabled_rules, annotatedText);
         const markdown = formatResultMarkdown(result, text);
+        const structured: StructuredCheckResult = { ...result, schemaVersion: SCHEMA_VERSION };
         return {
           content: [{ type: 'text', text: markdown }],
-          structuredContent: result,
+          structuredContent: structured,
         };
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
@@ -204,10 +207,12 @@ Returns:
         const effectiveDisabledRules = format === 'markdown' ? ['WHITESPACE_RULE'] : [];
         const result = await checkText(text, language, false, picky, effectiveDisabledRules, [], annotatedText);
 
+        const structured: StructuredCheckResult = { ...result, schemaVersion: SCHEMA_VERSION };
+
         if (result.totalMatches === 0) {
           return {
             content: [{ type: 'text', text: `✅ Keine Probleme gefunden. (Sprache: ${result.detectedLanguage})` }],
-            structuredContent: result,
+            structuredContent: structured,
           };
         }
 
@@ -224,7 +229,7 @@ Returns:
 
         return {
           content: [{ type: 'text', text: summary }],
-          structuredContent: result,
+          structuredContent: structured,
         };
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);

@@ -69,6 +69,122 @@ Folgende Features wurden bewusst eingebaut:
 
 ---
 
+## Versionierung und Kompatibilitätsversprechen
+
+Dieses Projekt folgt [Semantic Versioning 2.0.0](https://semver.org/) und orientiert sich
+am Symfony Backward Compatibility Promise: Minor- und Patch-Releases dürfen keine
+unerwarteten Seiteneffekte für bestehende Integrationen verursachen.
+
+---
+
+### Was ist die öffentliche API dieses Projekts?
+
+Die öffentliche API umfasst alles, worauf MCP-Clients und externe Nutzer:innen sich verlassen:
+
+#### Tool-Schnittstellen (streng stabil)
+- **Tool-Namen:** `lt_check_text`, `lt_check_text_summary`, `lt_list_languages`
+  – Umbenennung oder Entfernung ist immer ein Breaking Change (→ major).
+- **Parameter-Namen und -Typen:** Bestehende Parameter dürfen nicht umbenannt,
+  entfernt oder in ihrer Semantik verändert werden (→ major).
+- **Pflicht-/Optional-Status:** Ein optionaler Parameter darf nicht zu einem
+  Pflichtparameter werden (→ major). Umgekehrt ist erlaubt (→ minor).
+- **Parameter-Defaults:** Änderungen an Standardwerten gelten als Breaking Change (→ major).
+
+#### `structuredContent`-Schema (versioniert, streng stabil)
+Das JSON-Objekt im `structuredContent`-Feld des Tool-Response ist versioniertes Kernfeature.
+Es enthält ein `schemaVersion`-Feld (z. B. `"1.0"`).
+
+- Neue optionale Felder hinzufügen → minor
+- Bestehende Felder entfernen oder umbenennen → major
+- Typ eines bestehenden Felds ändern → major
+- `schemaVersion` wird bei jedem Breaking Change hochgezählt
+
+Aktuelles Schema: siehe `src/types.ts`, Interface `StructuredCheckResult`.
+
+#### Umgebungsvariablen (streng stabil)
+Bestehende Variablen (`LT_USERNAME`, `LT_API_KEY`, `TRANSPORT`, `PORT`) dürfen
+in minor/patch nicht umbenannt oder entfernt werden (→ major).
+Neue optionale Variablen einführen ist erlaubt (→ minor).
+
+#### Markdown-Ausgabe (teilweise stabil)
+- **Kategorie-Schlüssel** (🔴 Spelling, 🟠 Grammar, …) und ihre **Reihenfolge**
+  in der Ausgabe sind stabil (→ Änderung ist major).
+- **Darstellungsdetails** (Formatierung, Einrückung, Emoji-Stil) dürfen sich
+  in minor ändern, sofern alle Informationen vollständig erhalten bleiben.
+- Informationen entfernen ist immer breaking (→ major).
+
+---
+
+### Was ist intern und kann sich jederzeit ändern?
+
+- Dateistruktur unter `src/` (Modulnamen, Klassen, interne Funktionen)
+- Interne TypeScript-Typen, die nicht Teil von `structuredContent` sind
+- Build-Konfiguration (`tsconfig.json`, `package.json`-Scripts)
+- Entwicklerwerkzeuge (Lint, Format, CI-Konfiguration)
+
+---
+
+### Versionsregeln im Überblick
+
+| Änderungstyp                                        | Version   |
+|-----------------------------------------------------|-----------|
+| Bugfix ohne Verhaltensänderung                      | patch     |
+| Neues optionales Tool-Parameter                     | minor     |
+| Neues Tool                                          | minor     |
+| Neue optionale Umgebungsvariable                    | minor     |
+| Neue optionale Felder in `structuredContent`        | minor     |
+| Darstellungsänderung (Markdown, Formatierung)       | minor     |
+| Tool-Name geändert oder entfernt                    | **major** |
+| Pflichtparameter hinzugefügt                        | **major** |
+| Parameter-Default geändert                          | **major** |
+| Bestehende Umgebungsvariable umbenannt/entfernt     | **major** |
+| Felder in `structuredContent` entfernt/umbenannt    | **major** |
+| `schemaVersion` erhöht                              | **major** |
+| Kategorie-Schlüssel oder -Reihenfolge geändert      | **major** |
+
+---
+
+### Deprecation-Prozess
+
+Soll etwas aus der öffentlichen API entfernt werden, gilt:
+
+1. In einem **minor**-Release als deprecated markieren (Hinweis im README und
+   in der Tool-Beschreibung im MCP-Response).
+2. Frühestens im **nächsten major**-Release entfernen.
+3. Im CHANGELOG.md unter `### Deprecated` dokumentieren.
+
+---
+
+### Release-Checkliste
+
+Vor jedem Release prüfen:
+
+- [ ] Alle Änderungen seit letztem Tag dokumentiert in `CHANGELOG.md`
+- [ ] Versionsnummer in `package.json` gesetzt
+- [ ] Git-Tag gesetzt (`git tag v1.2.3`)
+- [ ] Geprüft: Entspricht der Versionstyp (patch/minor/major) den obigen Regeln?
+- [ ] Bei major: Migration-Hinweise im CHANGELOG unter `### Breaking Changes`
+- [ ] Bei Änderung an `structuredContent`: `schemaVersion` aktualisiert und
+      Interface `StructuredCheckResult` in `src/types.ts` angepasst
+
+---
+
+### `schemaVersion` in `structuredContent`
+
+Jeder Tool-Response, der `structuredContent` enthält, liefert:
+
+```json
+{
+  "schemaVersion": "1.0",
+  ...
+}
+```
+
+Clients können dieses Feld auswerten, um Kompatibilität zu prüfen.
+Die Version folgt dem Format `MAJOR.MINOR` unabhängig von der Paketversion.
+
+---
+
 ## Konfiguration (Claude Desktop / Claude Code)
 
 ```json

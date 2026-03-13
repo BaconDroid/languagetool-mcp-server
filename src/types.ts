@@ -93,3 +93,11 @@ export interface CheckResult {
   matches: FormattedMatch[];
   hasCriticalIssues: boolean;
 }
+
+// Versioned schema for structuredContent in tool responses.
+// schemaVersion follows MAJOR.MINOR format independent of the package version.
+// Increment MAJOR on breaking changes (fields removed/renamed/type-changed),
+// increment MINOR when adding optional fields.
+export interface StructuredCheckResult extends CheckResult {
+  schemaVersion: string;
+}
