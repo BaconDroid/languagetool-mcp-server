@@ -1,11 +1,19 @@
-# languagetool-mcp-server
+# languagetool-mcp-server (self-hosted fork)
 
-[![npm version](https://img.shields.io/npm/v/@dpesch/languagetool-mcp-server)](https://www.npmjs.com/package/@dpesch/languagetool-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-MCP server for the **LanguageTool Pro API** — brings spell-checking, grammar, and style suggestions directly into Claude Code and other MCP-compatible clients.
+> **Fork of [dpesch/languagetool-mcp-server](https://codeberg.org/dpesch/languagetool-mcp-server)** - adapted for **self-hosted LanguageTool** instances in addition to the Pro API.
 
-> **⚠️ LanguageTool Pro required** — This server uses the LanguageTool Pro API. A paid [LanguageTool Pro subscription](https://languagetool.org/pro) with API access is required. The free tier does not provide API access.
+MCP server for **LanguageTool** - brings spell-checking, grammar, and style suggestions directly into Claude Code and other MCP-compatible clients.
+
+## What changed from the original
+
+This fork adds support for **self-hosted LanguageTool** (Docker or standalone) without requiring a Pro subscription:
+
+- `LANGUAGETOOL_URL` env var to point to your own instance (default: Pro API)
+- `LANGUAGETOOL_CHAR_LIMIT` env var to override character limit
+- Credentials (`LT_USERNAME` / `LT_API_KEY`) are now **optional** - self-hosted instances don't need them
+- Fully backward-compatible with LanguageTool Pro (set credentials as before)
 
 📖 [Deutsche Dokumentation](README.de.md)
 
@@ -14,8 +22,18 @@ MCP server for the **LanguageTool Pro API** — brings spell-checking, grammar, 
 ## Prerequisites
 
 - Node.js ≥ 18
-- **LanguageTool Pro account** with API access ([subscription required](https://languagetool.org/pro))
-- API credentials: username (email address) + API key
+- **Either:** a self-hosted LanguageTool instance (e.g. Docker `meyay/languagetool`)
+- **Or:** a LanguageTool Pro account with API access ([subscription required](https://languagetool.org/pro))
+
+### Self-hosted (free)
+
+Run your own LanguageTool server:
+
+```bash
+docker run -d --name languagetool -p 8010:8081 meyay/languagetool:latest
+```
+
+### Pro API (paid)
 
 Find your API key at: https://languagetool.org/editor/settings/access-tokens
 
@@ -23,12 +41,8 @@ Find your API key at: https://languagetool.org/editor/settings/access-tokens
 
 ## Installation
 
-No installation needed — use `npx @dpesch/languagetool-mcp-server` directly in your MCP config (see Setup below).
-
-**Alternative — clone and build locally:**
-
 ```bash
-git clone https://codeberg.org/dpesch/languagetool-mcp-server
+git clone https://github.com/BaconDroid/languagetool-mcp-server
 cd languagetool-mcp-server
 npm install
 npm run build
@@ -36,37 +50,22 @@ npm run build
 
 ---
 
-## Credentials
+## Environment Variables
 
-The server reads credentials from environment variables:
-
-| Variable       | Description                                  |
-|---------------|----------------------------------------------|
-| `LT_USERNAME` | LanguageTool username (email address)        |
-| `LT_API_KEY`  | API key from your account settings           |
+| Variable                  | Required           | Description                                         | Default                                  |
+| ------------------------- | ------------------ | --------------------------------------------------- | ---------------------------------------- |
+| `LANGUAGETOOL_URL`          | No                 | Base URL of your LanguageTool instance              | `https://api.languagetoolplus.com/v2`    |
+| `LANGUAGETOOL_CHAR_LIMIT`   | No                 | Max characters per request                          | `40000`                                  |
+| `LT_USERNAME`               | Pro API only       | LanguageTool username (email)                       | -                                        |
+| `LT_API_KEY`                | Pro API only       | API key from account settings                       | -                                        |
+| `TRANSPORT`                 | No                 | `stdio` (default) or `http`                           | `stdio`                                    |
+| `PORT`                      | No                 | Port for HTTP transport                             | `3456`                                   |
 
 ---
 
-## Setup in Claude Code (stdio — recommended for local use)
+## Setup in Claude Code (stdio)
 
-Add to `~/.claude/claude_desktop_config.json` (Windows: `%APPDATA%\Claude\claude_desktop_config.json`):
-
-```json
-{
-  "mcpServers": {
-    "languagetool": {
-      "command": "npx",
-      "args": ["-y", "@dpesch/languagetool-mcp-server"],
-      "env": {
-        "LT_USERNAME": "your@email.com",
-        "LT_API_KEY":  "your-api-key"
-      }
-    }
-  }
-}
-```
-
-**If you prefer a local build** (replace `/path/to/...` with your actual path):
+### Self-hosted LanguageTool (free)
 
 ```json
 {
@@ -74,6 +73,30 @@ Add to `~/.claude/claude_desktop_config.json` (Windows: `%APPDATA%\Claude\claude
     "languagetool": {
       "command": "node",
       "args": ["/path/to/languagetool-mcp-server/dist/index.js"],
+      "env": {
+        "LANGUAGETOOL_URL": "http://localhost:8010/v2"
+      }
+    }
+  }
+}
+```
+
+### LanguageTool Pro API (paid)
+
+```json
+{
+  "mcpServers": {
+    "languagetool": {
+      "command": "node",
+      "args": ["/path/to/languagetool-mcp-server/dist/index.js"],
+      "env": {
+        "LT_USERNAME": "your@email.com",
+        "LT_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
       "env": {
         "LT_USERNAME": "your@email.com",
         "LT_API_KEY":  "your-api-key"
