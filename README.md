@@ -63,6 +63,45 @@ npm run build
 
 ---
 
+## Sources and Credits
+
+This fork combines two open-source projects:
+
+| Component | Source | License | Purpose |
+|-----------|--------|---------|---------|
+| **MCP Server** (this repo) | [dpesch/languagetool-mcp-server](https://codeberg.org/dpesch/languagetool-mcp-server) | MIT | MCP protocol wrapper for LanguageTool API |
+| **LanguageTool Backend** | [meyay/docker-languagetool](https://github.com/meyayl/docker-languagetool) | - | Self-hosted LanguageTool server with fastText |
+
+### What was changed
+
+- `src/constants.ts`: `LT_API_URL` now reads from `LANGUAGETOOL_URL` env var (default: Pro API)
+- `src/constants.ts`: `CHARACTER_LIMIT` now reads from `LANGUAGETOOL_CHAR_LIMIT` env var
+- `src/services/languagetool.ts`: `getCredentials()` returns `null` instead of throwing when credentials are missing
+- `src/services/languagetool.ts`: `ltPost()` only sends auth params when credentials are present
+
+---
+
+## Setup with MCPElevator
+
+This server works as a stdio command in [MCPElevator](https://github.com/pacnpal/mcpelevator):
+
+```json
+{
+  "name": "LanguageTool",
+  "runner": "command",
+  "command": "node",
+  "args": ["/path/to/languagetool-mcp-server/dist/index.js"],
+  "env": {
+    "LANGUAGETOOL_URL": "http://127.0.0.1:8010/v2"
+  },
+  "enabled": true
+}
+```
+
+Then access via `http://<mcpelevator>:<port>/s/languagetool/mcp`.
+
+---
+
 ## Setup in Claude Code (stdio)
 
 ### Self-hosted LanguageTool (free)
@@ -92,14 +131,6 @@ npm run build
       "env": {
         "LT_USERNAME": "your@email.com",
         "LT_API_KEY": "your-api-key"
-      }
-    }
-  }
-}
-```
-      "env": {
-        "LT_USERNAME": "your@email.com",
-        "LT_API_KEY":  "your-api-key"
       }
     }
   }
