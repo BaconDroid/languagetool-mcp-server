@@ -27,10 +27,37 @@ This fork adds support for **self-hosted LanguageTool** (Docker or standalone) w
 
 ### Self-hosted (free)
 
-Run your own LanguageTool server:
+Run your own LanguageTool server with ngrams for better contextual checking:
 
 ```bash
-docker run -d --name languagetool -p 8010:8081 meyay/languagetool:latest
+# Create ngrams directory
+mkdir -p /mnt/user/appdata/languagetool/ngrams/{en,fr}
+
+# Run with auto-download ngrams for English and French
+docker run -d \
+  --name languagetool \
+  -p 8010:8081 \
+  -e Java_Xms=512m \
+  -e Java_Xmx=2g \
+  -e langtool_pipelinePrewarming=true \
+  -e download_ngrams_for_langs=en,fr \
+  -v /mnt/user/appdata/languagetool/ngrams:/var/cache/ngrams \
+  --restart unless-stopped \
+  meyay/languagetool:latest
+```
+
+> **Note:** Ngrams download is ~9GB for EN+FR. The container will download them on first start. LanguageTool is healthy and ready once the download completes and the server starts.
+
+**Without ngrams** (lighter, faster startup):
+
+```bash
+docker run -d \
+  --name languagetool \
+  -p 8010:8081 \
+  -e Java_Xms=512m \
+  -e Java_Xmx=2g \
+  --restart unless-stopped \
+  meyay/languagetool:latest
 ```
 
 ### Pro API (paid)
