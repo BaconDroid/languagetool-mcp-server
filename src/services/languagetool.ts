@@ -12,15 +12,13 @@ import type { AnnotationPart } from './markdown.js';
 // Auth helper
 // ---------------------------------------------------------------------------
 
-function getCredentials(): { username: string; apiKey: string } {
+function getCredentials(): { username: string; apiKey: string } | null {
   const username = process.env.LT_USERNAME;
   const apiKey   = process.env.LT_API_KEY;
 
+  // Self-hosted instances don't require credentials
   if (!username || !apiKey) {
-    throw new Error(
-      'LanguageTool-Zugangsdaten fehlen. ' +
-      'Bitte LT_USERNAME und LT_API_KEY als Umgebungsvariablen setzen.'
-    );
+    return null;
   }
 
   return { username, apiKey };
@@ -34,13 +32,15 @@ async function ltPost(
   endpoint: string,
   params: Record<string, string>
 ): Promise<unknown> {
-  const { username, apiKey } = getCredentials();
+  const creds = getCredentials();
 
-  const body = new URLSearchParams({
-    username,
-    apiKey,
-    ...params,
-  });
+  const bodyParams: Record<string, string> = { ...params };
+  if (creds) {
+    bodyParams.username = creds.username;
+    bodyParams.apiKey = creds.apiKey;
+  }
+
+  const body = new URLSearchParams(bodyParams);
 
   const response = await fetch(`${LT_API_URL}/${endpoint}`, {
     method: 'POST',

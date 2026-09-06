@@ -1,5 +1,5 @@
-export const LT_API_URL = 'https://api.languagetoolplus.com/v2';
-export const CHARACTER_LIMIT = 40_000; // LanguageTool Pro limit per request
+export const LT_API_URL = process.env.LANGUAGETOOL_URL || 'https://api.languagetoolplus.com/v2';
+export const CHARACTER_LIMIT = parseInt(process.env.LANGUAGETOOL_CHAR_LIMIT || '40000', 10);
 
 export const ISSUE_TYPE_MAP: Record<string, string> = {
   misspelling:   'SPELLING',
