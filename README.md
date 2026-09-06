@@ -31,9 +31,10 @@ Run your own LanguageTool server with ngrams for better contextual checking:
 
 ```bash
 # Create ngrams directory
-mkdir -p /mnt/user/appdata/languagetool/ngrams/{en,fr}
+mkdir -p /mnt/user/appdata/languagetool/ngrams
 
 # Run with auto-download ngrams for English and French
+# IMPORTANT: mount to /ngrams (not /var/cache/ngrams)
 docker run -d \
   --name languagetool \
   -p 8010:8081 \
@@ -41,12 +42,12 @@ docker run -d \
   -e Java_Xmx=2g \
   -e langtool_pipelinePrewarming=true \
   -e download_ngrams_for_langs=en,fr \
-  -v /mnt/user/appdata/languagetool/ngrams:/var/cache/ngrams \
+  -v /mnt/user/appdata/languagetool/ngrams:/ngrams \
   --restart unless-stopped \
   meyay/languagetool:latest
 ```
 
-> **Note:** Ngrams download is ~9GB for EN+FR. The container will download them on first start. LanguageTool is healthy and ready once the download completes and the server starts.
+> **Note:** Ngrams download is ~10GB for EN+FR. The container downloads them on first start (check progress: `docker logs -f languagetool`). Do NOT create `en`/`fr` subdirectories manually -- the container creates them. If the container crash-loops with "Directory must contain at least 1grams, 2grams, 3grams", delete the empty subdirs and restart: `rm -rf /mnt/user/appdata/languagetool/ngrams/{en,fr} && docker restart languagetool`
 
 **Without ngrams** (lighter, faster startup):
 
