@@ -15,50 +15,26 @@ This fork adds support for **self-hosted LanguageTool** (Docker or standalone) w
 - Credentials (`LT_USERNAME` / `LT_API_KEY`) are now **optional** - self-hosted instances don't need them
 - Fully backward-compatible with LanguageTool Pro (set credentials as before)
 
-📖 [Deutsche Dokumentation](README.de.md)
-
 ---
 
 ## Prerequisites
 
 - Node.js ≥ 18
-- **Either:** a self-hosted LanguageTool instance (e.g. Docker `meyay/languagetool`)
+- **Either:** a self-hosted LanguageTool instance (e.g. Docker `erikvl87/languagetool`)
 - **Or:** a LanguageTool Pro account with API access ([subscription required](https://languagetool.org/pro))
 
 ### Self-hosted (free)
 
-Run your own LanguageTool server with ngrams for better contextual checking:
-
-```bash
-# Create ngrams directory
-mkdir -p /mnt/user/appdata/languagetool/ngrams
-
-# Run with auto-download ngrams for English and French
-# IMPORTANT: mount to /ngrams (not /var/cache/ngrams)
-docker run -d \
-  --name languagetool \
-  -p 8010:8081 \
-  -e Java_Xms=512m \
-  -e Java_Xmx=2g \
-  -e langtool_pipelinePrewarming=true \
-  -e download_ngrams_for_langs=en,fr \
-  -v /mnt/user/appdata/languagetool/ngrams:/ngrams \
-  --restart unless-stopped \
-  meyay/languagetool:latest
-```
-
-> **Note:** Ngrams download is ~10GB for EN+FR. The container downloads them on first start (check progress: `docker logs -f languagetool`). Do NOT create `en`/`fr` subdirectories manually -- the container creates them. If the container crash-loops with "Directory must contain at least 1grams, 2grams, 3grams", delete the empty subdirs and restart: `rm -rf /mnt/user/appdata/languagetool/ngrams/{en,fr} && docker restart languagetool`
-
-**Without ngrams** (lighter, faster startup):
+Run your own LanguageTool server:
 
 ```bash
 docker run -d \
   --name languagetool \
-  -p 8010:8081 \
+  -p 8010:8010 \
   -e Java_Xms=512m \
   -e Java_Xmx=2g \
   --restart unless-stopped \
-  meyay/languagetool:latest
+  erikvl87/languagetool:latest
 ```
 
 ### Pro API (paid)
@@ -67,7 +43,45 @@ Find your API key at: https://languagetool.org/editor/settings/access-tokens
 
 ---
 
-## Installation
+## Docker (all-in-one)
+
+Bundle LanguageTool server + MCP server in a single container.
+Base image: [erikvl87/languagetool](https://github.com/Erikvl87/docker-languagetool) (Community Apps, shell entrypoint).
+
+```bash
+git clone https://github.com/BaconDroid/languagetool-mcp-server
+cd languagetool-mcp-server
+docker build -t languagetool-mcp:latest .
+```
+
+```bash
+docker run -d \
+  --name languagetool-mcp \
+  -p 8010:8010 \
+  -p 3456:3456 \
+  -e Java_Xms=512m \
+  -e Java_Xmx=2g \
+  -v /mnt/user/appdata/languagetool/ngrams:/ngrams \
+  --restart unless-stopped \
+  languagetool-mcp:latest
+```
+
+Health check: `curl http://localhost:8010/v2/languages`
+
+### Environment variables
+
+| Variable                  | Default                                  | Description                         |
+| ------------------------- | ---------------------------------------- | ----------------------------------- |
+| `LANGUAGETOOL_URL`          | `http://127.0.0.1:8010/v2`                | LanguageTool API URL                |
+| `LANGUAGETOOL_CHAR_LIMIT`   | `40000`                                  | Max characters per check            |
+| `TRANSPORT`                 | `stdio`                                    | `stdio` or `http`                     |
+| `PORT`                      | `3456`                                   | Port for HTTP transport             |
+| `JAVA_XMS`                 | `512m`                                   | Java heap min                       |
+| `JAVA_XMX`                 | `2g`                                     | Java heap max                       |
+
+---
+
+## Installation (standalone)
 
 ```bash
 git clone https://github.com/BaconDroid/languagetool-mcp-server
@@ -93,12 +107,21 @@ npm run build
 
 ## Sources and Credits
 
-This fork combines two open-source projects:
+This fork combines open-source projects:
 
 | Component | Source | License | Purpose |
-|-----------|--------|---------|---------|
+|-----------|--------|---------|----------|
 | **MCP Server** (this repo) | [dpesch/languagetool-mcp-server](https://codeberg.org/dpesch/languagetool-mcp-server) | MIT | MCP protocol wrapper for LanguageTool API |
-| **LanguageTool Backend** | [meyay/docker-languagetool](https://github.com/meyayl/docker-languagetool) | - | Self-hosted LanguageTool server with fastText |
+| **LanguageTool Docker** | [Erikvl87/docker-languagetool](https://github.com/Erikvl87/docker-languagetool) | LGPL-2.1 | Base image for all-in-one Docker (shell entrypoint, Community Apps) |
+| **LanguageTool** | [languagetool-org/languagetool](https://github.com/languagetool-org/languagetool) | LGPL-2.1 | Grammar/spell checker engine |
+
+The 3 official community Docker images referenced by LanguageTool:
+
+| Project | Stars | Port | Entry point | Notes |
+|---------|-------|------|-------------|-------|
+| [Erikvl87/docker-languagetool](https://github.com/Erikvl87/docker-languagetool) | 721 | 8010 | Shell script | **Used as base image** - Community Apps, fastText auto-download |
+| [meyayl/docker-languagetool](https://github.com/meyayl/docker-languagetool) | 273 | 8081 | Binary | More features (read-only FS, user mapping), auto ngrams |
+| [silviof/docker-languagetool](https://hub.docker.com/r/silviof/docker-languagetool) | - | 8010 | Shell script | 1M+ pulls, no fastText, no auto ngrams |
 
 ### What was changed
 
@@ -214,12 +237,12 @@ All supported languages with language codes. Optionally filterable via `filter` 
 
 | Icon | Category       |
 |------|----------------|
-| 🔴   | Spelling       |
-| 🟠   | Grammar        |
-| 🟡   | Punctuation    |
-| 🔵   | Style          |
-| ⚪   | Typography     |
-| ⚫   | Other          |
+| :red_circle: | Spelling       |
+| :orange_circle: | Grammar        |
+| :yellow_circle: | Punctuation    |
+| :blue_circle: | Style          |
+| :white_circle: | Typography     |
+| :black_circle: | Other          |
 
 ---
 
