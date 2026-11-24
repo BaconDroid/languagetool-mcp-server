@@ -29,8 +29,9 @@ if [ "$config_injected" = true ]; then
   cat /LanguageTool/config.properties
 fi
 
-Xms=${Java_Xms:-256m}
-Xmx=${Java_Xmx:-512m}
+# Defaults must stay in sync with the ENV defaults in the Dockerfile (Java_Xms / Java_Xmx)
+Xms=${Java_Xms:-512m}
+Xmx=${Java_Xmx:-2g}
 
 PRIO_ARGS=(
   "-Xms$Xms"

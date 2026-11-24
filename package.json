@@ -1,6 +1,6 @@
 {
   "name": "@dpesch/languagetool-mcp-server",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "MCP server for LanguageTool Pro API – spelling, grammar, style",
   "author": "Dominik Pesch",
   "license": "MIT",
@@ -17,6 +17,7 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
+    "test": "npm run build && node --test test/*.test.js",
     "start": "node dist/index.js",
     "dev": "tsc --watch"
   },

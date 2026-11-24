@@ -39,8 +39,8 @@ USER languagetool
 # Default env vars
 ENV LANGUAGETOOL_URL="http://127.0.0.1:8010/v2" \
     LANGUAGETOOL_CHAR_LIMIT="40000" \
-    JAVA_XMS="512m" \
-    JAVA_XMX="2g"
+    Java_Xms="512m" \
+    Java_Xmx="2g"
 
 # Expose MCP HTTP port
 EXPOSE 3456

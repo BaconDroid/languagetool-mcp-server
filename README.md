@@ -76,8 +76,17 @@ Health check: `curl http://localhost:8010/v2/languages`
 | `LANGUAGETOOL_CHAR_LIMIT`   | `40000`                                  | Max characters per check            |
 | `TRANSPORT`                 | `stdio`                                    | `stdio` or `http`                     |
 | `PORT`                      | `3456`                                   | Port for HTTP transport             |
-| `JAVA_XMS`                 | `512m`                                   | Java heap min                       |
-| `JAVA_XMX`                 | `2g`                                     | Java heap max                       |
+| `Java_Xms`                  | `512m`                                   | Java heap min                       |
+| `Java_Xmx`                  | `2g`                                     | Java heap max                       |
+
+> The heap variables are named `Java_Xms` / `Java_Xmx` (partial camelCase) because
+> that is the name `entrypoint-mcp.sh` reads and the name used by the
+> [erikvl87/docker-languagetool](https://github.com/Erikvl87/docker-languagetool)
+> base image - so the same `-e Java_Xms=...` flags work for both the standalone
+> LanguageTool container and this all-in-one image. The values are passed straight
+> through to the JVM as `-Xms` / `-Xmx`. The defaults shown here are the ones
+> baked into the image via `ENV` in the `Dockerfile` and are mirrored as fallbacks
+> in `entrypoint-mcp.sh`.
 
 ---
 
